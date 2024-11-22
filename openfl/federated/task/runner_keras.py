@@ -18,7 +18,7 @@ from openfl.utilities.split import split_tensor_dict_for_holdouts
 with catch_warnings():
     simplefilter(action="ignore")
     import tensorflow as tf
-    import tensorflow.keras as ke
+    import keras as ke
 
 
 class KerasTaskRunner(TaskRunner):
@@ -39,14 +39,14 @@ class KerasTaskRunner(TaskRunner):
         """
         super().__init__(**kwargs)
 
-        self.model = ke.Model()
+        self.model = ke.models.Model()
 
         self.model_tensor_names = []
 
         # this is a map of all of the required tensors for each of the public
         # functions in KerasTaskRunner
         self.required_tensorkeys_for_function = {}
-        ke.backend.clear_session()
+        # ke.backend.clear_session()
 
     def rebuild_model(self, round_num, input_tensor_dict, validation=False):
         """Parse tensor names and update weights of model. Handles the
@@ -64,6 +64,7 @@ class KerasTaskRunner(TaskRunner):
         elif round_num > 0 and self.opt_treatment == "CONTINUE_GLOBAL" and not validation:
             self.set_tensor_dict(input_tensor_dict, with_opt_vars=True)
         else:
+            print("Setting model weights without opts var")
             self.set_tensor_dict(input_tensor_dict, with_opt_vars=False)
 
     def train(
@@ -116,7 +117,9 @@ class KerasTaskRunner(TaskRunner):
         }
 
         # output model tensors (Doesn't include TensorKey)
-        output_model_dict = self.get_tensor_dict(with_opt_vars=True)
+        #TODO
+        # output_model_dict = self.get_tensor_dict(with_opt_vars=True)
+        output_model_dict = self.get_tensor_dict(with_opt_vars=False)
         global_model_dict, local_model_dict = split_tensor_dict_for_holdouts(
             self.logger, output_model_dict, **self.tensor_dict_split_fn_kwargs
         )
@@ -177,21 +180,21 @@ class KerasTaskRunner(TaskRunner):
         """
         if metrics is None:
             metrics = []
-        # TODO Currently assuming that all metrics are defined at
-        #  initialization (build_model).
-        #  If metrics are added (i.e. not a subset of what was originally
-        #  defined) then the model must be recompiled.
-        model_metrics_names = self.model.metrics_names
+        # # TODO Currently assuming that all metrics are defined at
+        # #  initialization (build_model).
+        # #  If metrics are added (i.e. not a subset of what was originally
+        # #  defined) then the model must be recompiled.
+        # results = self.model.get_metrics_result()
 
-        # TODO if there are new metrics in the flplan that were not included
-        #  in the originally
-        #  compiled model, that behavior is not currently handled.
-        for param in metrics:
-            if param not in model_metrics_names:
-                raise ValueError(
-                    f"KerasTaskRunner does not support specifying new metrics. "
-                    f"Param_metrics = {metrics}, model_metrics_names = {model_metrics_names}"
-                )
+        # # TODO if there are new metrics in the flplan that were not included
+        # #  in the originally
+        # #  compiled model, that behavior is not currently handled.
+        # for param in metrics:
+        #     if param not in results:
+        #         raise ValueError(
+        #             f"KerasTaskRunner does not support specifying new metrics. "
+        #             f"Param_metrics = {metrics}"
+        #         )
 
         history = self.model.fit(batch_generator, verbose=1, **kwargs)
         results = []
@@ -223,20 +226,16 @@ class KerasTaskRunner(TaskRunner):
         self.rebuild_model(round_num, input_tensor_dict, validation=True)
         param_metrics = kwargs["metrics"]
 
-        vals = self.model.evaluate(self.data_loader.get_valid_loader(batch_size), verbose=1)
-        model_metrics_names = self.model.metrics_names
-        if type(vals) is not list:
-            vals = [vals]
-        ret_dict = dict(zip(model_metrics_names, vals))
-
+        self.model.evaluate(self.data_loader.get_valid_loader(batch_size), verbose=1)
+        results = self.model.get_metrics_result()
         # TODO if there are new metrics in the flplan that were not included in
         #  the originally compiled model, that behavior is not currently
         #  handled.
         for param in param_metrics:
-            if param not in model_metrics_names:
+            if param not in results:
                 raise ValueError(
                     f"KerasTaskRunner does not support specifying new metrics. "
-                    f"Param_metrics = {param_metrics}, model_metrics_names = {model_metrics_names}"
+                    f"Param_metrics = {param_metrics}"
                 )
 
         origin = col_name
@@ -248,7 +247,7 @@ class KerasTaskRunner(TaskRunner):
         tags = ("metric",)
         tags = change_tags(tags, add_field=suffix)
         output_tensor_dict = {
-            TensorKey(metric, origin, round_num, True, tags): np.array(ret_dict[metric])
+            TensorKey(metric, origin, round_num, True, tags): np.array(results[metric])
             for metric in param_metrics
         }
 
@@ -281,7 +280,7 @@ class KerasTaskRunner(TaskRunner):
         Returns:
             weight_names (list): The weight name list.
         """
-        weight_names = [weight.name for weight in obj.weights]
+        weight_names = [layer.name + "/" + weight.name for layer in obj.layers for weight in layer.weights]
         return weight_names
 
     @staticmethod
@@ -298,10 +297,18 @@ class KerasTaskRunner(TaskRunner):
             weights_dict (dict): The weight dictionary.
         """
         weights_dict = {}
-        weight_names = [weight.name for weight in obj.weights]
-        weight_values = obj.get_weights()
-        for name, value in zip(weight_names, weight_values):
-            weights_dict[name + suffix] = value
+        if isinstance(obj, ke.optimizers.Optimizer):
+            #TODO
+            print("inside optimizer")
+        else:
+            weight_names = [layer.name + "/" + weight.name for layer in obj.layers for weight in layer.weights]
+            weight_name_index = 0
+            for layer in obj.layers:
+                if weight_name_index < len(weight_names) and len(layer.get_weights()) > 0:
+                    for weight in layer.get_weights():
+                        weights_dict[weight_names[weight_name_index] + suffix] = weight
+                        weight_name_index += 1
+        
         return weights_dict
 
     @staticmethod
@@ -313,7 +320,7 @@ class KerasTaskRunner(TaskRunner):
                 the weights.
             weights_dict (dict): The weight dictionary.
         """
-        weight_names = [weight.name for weight in obj.weights]
+        weight_names = [layer.name + "/" + weight.name for layer in obj.layers for weight in layer.weights]
         weight_values = [weights_dict[name] for name in weight_names]
         obj.set_weights(weight_values)
 
@@ -348,11 +355,11 @@ class KerasTaskRunner(TaskRunner):
         if with_opt_vars is False:
             # It is possible to pass in opt variables from the input tensor
             # dict. This will make sure that the correct layers are updated
-            model_weight_names = [weight.name for weight in self.model.weights]
-            model_weights_dict = {name: tensor_dict[name] for name in model_weight_names}
+            model_weight_names = self._get_weights_names(self.model)
+            model_weights_dict = {name: tensor_dict[name] if name in tensor_dict else None for name in model_weight_names}
             self._set_weights_dict(self.model, model_weights_dict)
         else:
-            model_weight_names = [weight.name for weight in self.model.weights]
+            model_weight_names = self._get_weights_names(self.model)
             model_weights_dict = {name: tensor_dict[name] for name in model_weight_names}
             opt_weight_names = [weight.name for weight in self.model.optimizer.weights]
             opt_weights_dict = {name: tensor_dict[name] for name in opt_weight_names}
@@ -361,7 +368,8 @@ class KerasTaskRunner(TaskRunner):
 
     def reset_opt_vars(self):
         """Resets the optimizer variables."""
-        for var in self.model.optimizer.variables():
+        print("reset_opt_vars as called")
+        for var in self.model.optimizer.variables:
             var.assign(tf.zeros_like(var))
         self.logger.debug("Optimizer variables reset")
 

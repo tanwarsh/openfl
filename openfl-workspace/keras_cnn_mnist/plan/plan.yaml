@@ -27,7 +27,7 @@ data_loader :
 
 task_runner :
   defaults : plan/defaults/task_runner.yaml
-  template : src.keras_cnn.KerasCNN
+  template : src.taskrunner.KerasCNN
 
 network :
   defaults : plan/defaults/network.yaml
