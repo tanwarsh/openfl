@@ -64,7 +64,6 @@ class KerasTaskRunner(TaskRunner):
         elif round_num > 0 and self.opt_treatment == "CONTINUE_GLOBAL" and not validation:
             self.set_tensor_dict(input_tensor_dict, with_opt_vars=True)
         else:
-            print("Setting model weights without opts var")
             self.set_tensor_dict(input_tensor_dict, with_opt_vars=False)
 
     def train(
@@ -370,7 +369,8 @@ class KerasTaskRunner(TaskRunner):
         """Resets the optimizer variables."""
         print("reset_opt_vars as called")
         for var in self.model.optimizer.variables:
-            var.assign(tf.zeros_like(var))
+            print("reset was not done")
+            # var.assign(tf.zeros_like(var))
         self.logger.debug("Optimizer variables reset")
 
     def set_required_tensorkeys_for_function(self, func_name, tensor_key, **kwargs):

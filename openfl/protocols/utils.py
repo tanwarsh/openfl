@@ -225,7 +225,6 @@ def deconstruct_model_proto(model_proto, compression_pipeline):
         values are the corresponding tensors.
         round_number: The round number for the model.
     """
-    # this is the issue
     # extract the tensor_dict and metadata
     bytes_dict, metadata_dict, round_number = model_proto_to_bytes_and_metadata(model_proto)
 
