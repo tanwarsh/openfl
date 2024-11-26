@@ -380,28 +380,28 @@ class KerasTaskRunner(TaskRunner):
             var.assign(tf.zeros_like(var))
         self.logger.debug("Optimizer variables reset")
 
-    def set_required_tensorkeys_for_function(self, func_name, tensor_key, **kwargs):
-        """
-        Set the required tensors for specified function that could be called as part of a task.
+    # def set_required_tensorkeys_for_function(self, func_name, tensor_key, **kwargs):
+    #     """
+    #     Set the required tensors for specified function that could be called as part of a task.
 
-        By default, this is just all of the layers and optimizer of the model.
-        Custom tensors should be added to this function.
+    #     By default, this is just all of the layers and optimizer of the model.
+    #     Custom tensors should be added to this function.
 
-        Args:
-            func_name (str): The function name.
-            tensor_key (TensorKey): The tensor key.
-            **kwargs: Any function arguments.
-        """
-        # TODO there should be a way to programmatically iterate through all
-        #  of the methods in the class and declare the tensors.
-        # For now this is done manually
+    #     Args:
+    #         func_name (str): The function name.
+    #         tensor_key (TensorKey): The tensor key.
+    #         **kwargs: Any function arguments.
+    #     """
+    #     # TODO there should be a way to programmatically iterate through all
+    #     #  of the methods in the class and declare the tensors.
+    #     # For now this is done manually
 
-        if func_name == "validate":
-            # Should produce 'apply=global' or 'apply=local'
-            local_model = "apply" + kwargs["apply"]
-            self.required_tensorkeys_for_function[func_name][local_model].append(tensor_key)
-        else:
-            self.required_tensorkeys_for_function[func_name].append(tensor_key)
+    #     if func_name == "validate":
+    #         # Should produce 'apply=global' or 'apply=local'
+    #         local_model = "apply" + kwargs["apply"]
+    #         self.required_tensorkeys_for_function[func_name][local_model].append(tensor_key)
+    #     else:
+    #         self.required_tensorkeys_for_function[func_name].append(tensor_key)
 
     def get_required_tensorkeys_for_function(self, func_name, **kwargs):
         """Get the required tensors for specified function that could be called
@@ -465,7 +465,6 @@ class KerasTaskRunner(TaskRunner):
         # TODO there should be a way to programmatically iterate through all
         #  of the methods in the class and declare the tensors.
         # For now this is done manually
-
         output_model_dict = self.get_tensor_dict(with_opt_vars=with_opt_vars)
         global_model_dict, local_model_dict = split_tensor_dict_for_holdouts(
             self.logger, output_model_dict, **self.tensor_dict_split_fn_kwargs
