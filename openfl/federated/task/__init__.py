@@ -3,6 +3,10 @@
 
 
 """Task package."""
+import os
+
+# This guide can only be run with the torch backend.
+os.environ["KERAS_BACKEND"] = "torch"
 
 from importlib import util
 from warnings import catch_warnings, simplefilter

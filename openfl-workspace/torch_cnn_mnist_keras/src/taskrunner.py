@@ -9,7 +9,6 @@ os.environ["KERAS_BACKEND"] = "torch"
 
 import torch
 import keras
-from keras import layers
 
 from openfl.federated import KerasTaskRunner
 
