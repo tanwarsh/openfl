@@ -1,4 +1,4 @@
-# Copyright 2020-2024 Intel Corporation
+# Copyright 2020-2025 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
 
@@ -22,6 +22,7 @@ if util.find_spec("xgboost") is not None:
     from openfl.federated.data import XGBoostDataLoader
     from openfl.federated.task import XGBoostTaskRunner
 
+from openfl.federated.task import FederatedAnalyticsTaskRunner
 __all__ = [
     "Plan",
     "TaskRunner",

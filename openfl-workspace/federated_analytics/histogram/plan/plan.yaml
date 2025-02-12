@@ -1,0 +1,37 @@
+# Copyright (C) 2020-2021 Intel Corporation
+# Licensed subject to the terms of the separately executed evaluation license agreement between Intel Corporation and you.
+
+aggregator :
+  defaults : plan/defaults/aggregator.yaml
+  template : openfl.component.Aggregator
+  settings :
+    best_state_path : save/result.csv
+    rounds_to_train : 1
+
+collaborator :
+  defaults : plan/defaults/collaborator.yaml
+  template : openfl.component.Collaborator
+  settings :
+    delta_updates    : 
+
+data_loader :
+  defaults : plan/defaults/data_loader.yaml
+  template : src.dataloader.IRISInMemory
+  settings :
+    collaborator_count : 2
+    data_group_name    : iris
+    batch_size         : 150
+
+task_runner :
+  defaults : plan/defaults/task_runner.yaml
+  template : src.taskrunner.IrisHistogram
+
+network :
+  defaults : plan/defaults/network.yaml
+
+assigner :
+  defaults : plan/defaults/assigner.yaml
+
+tasks :
+  defaults : plan/defaults/tasks_fa.yaml
+
