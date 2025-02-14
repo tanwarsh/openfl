@@ -1017,15 +1017,19 @@ class Aggregator:
         # task sent
         # This handles getting the subset of collaborators that may be
         # part of the validation task
+        print("task_name", task_name)
         all_collaborators_for_task = self.assigner.get_collaborators_for_task(
             task_name, self.round_number
         )
+        print("all_collaborators_for_task", all_collaborators_for_task)
         # Leave out straggler for the round even if they've paritally
         # completed given tasks
         collaborators_for_task = []
+        print("self.stragglers", self.stragglers)
         collaborators_for_task = [
             c for c in all_collaborators_for_task if c in self.collaborators_done
         ]
+        print("collaborators_for_task", collaborators_for_task)
 
         # The collaborator data sizes for that task
         collaborator_weights_unnormalized = {
@@ -1044,6 +1048,9 @@ class Aggregator:
         # transformations to the tensorkey to resolve the aggregated
         # tensor for that round
         task_agg_function = self.assigner.get_aggregation_type_for_task(task_name)
+        print("task_name", task_name)
+        print("collaborators_for_task", collaborators_for_task)
+        print("self.round_number", self.round_number)
         task_key = TaskResultKey(task_name, collaborators_for_task[0], self.round_number)
 
         metrics = {}
@@ -1110,8 +1117,8 @@ class Aggregator:
 
         # Compute all validation related metrics
         logs = {}
-        for task_name in self.assigner.get_all_tasks_for_round(self.round_number):
-            logs.update(self._compute_validation_related_task_metrics(task_name))
+        # for task_name in self.assigner.get_all_tasks_for_round(self.round_number):
+        #     logs.update(self._compute_validation_related_task_metrics(task_name))
 
         # End of round callbacks.
         self.callbacks.on_round_end(self.round_number, logs)
@@ -1121,7 +1128,7 @@ class Aggregator:
 
         # Save the latest model
         logger.info("Saving round %s model...", self.round_number)
-        self._save_model(self.round_number, self.last_state_path)
+        # self._save_model(self.round_number, self.last_state_path)
 
         self.round_number += 1
         # resetting stragglers for task for a new round

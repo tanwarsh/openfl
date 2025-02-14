@@ -122,4 +122,7 @@ class RandomGroupedAssigner(Assigner):
         Returns:
             list: List of collaborators for the task in the specified round.
         """
+        print("inside get_collaborators_for_task")
+        print("task_name", task_name)
+        print(self.collaborators_for_task)
         return self.collaborators_for_task[task_name][round_number]
