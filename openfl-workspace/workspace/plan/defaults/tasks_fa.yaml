@@ -1,7 +1,9 @@
 query:
   function : query
   kwargs   :
+    columns: ['sepal length (cm)', 'sepal width (cm)']
 
 aggregate_query:
-  function : aggregate
+  function : aggregate_query
   kwargs   :
+    columns: ['sepal length (cm)', 'sepal width (cm)']

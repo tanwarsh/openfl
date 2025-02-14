@@ -145,6 +145,7 @@ def initialize(
         gandlf_config_path=gandlf_config,
     )
 
+    #shailesh
     init_state_path = plan.config["aggregator"]["settings"]["init_state_path"]
     # This is needed to bypass data being locally available
     if input_shape is not None:

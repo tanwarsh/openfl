@@ -43,6 +43,8 @@ class TensorDB:
         self.tensor_db = pd.DataFrame(
             {col: pd.Series(dtype=dtype) for col, dtype in types_dict.items()}
         )
+        print("TensorDB initialized")
+        print(self.tensor_db)
         self._bind_convenience_methods()
 
         self.mutex = Lock()

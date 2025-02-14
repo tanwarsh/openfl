@@ -5,14 +5,16 @@ aggregator :
   defaults : plan/defaults/aggregator.yaml
   template : openfl.component.Aggregator
   settings :
+    init_state_path : save/result.csv
     best_state_path : save/result.csv
+    last_state_path : save/result.csv
     rounds_to_train : 1
 
 collaborator :
   defaults : plan/defaults/collaborator.yaml
   template : openfl.component.Collaborator
-  settings :
-    delta_updates    : 
+  # settings :
+  #   delta_updates    : 
 
 data_loader :
   defaults : plan/defaults/data_loader.yaml
@@ -30,7 +32,7 @@ network :
   defaults : plan/defaults/network.yaml
 
 assigner :
-  defaults : plan/defaults/assigner.yaml
+  defaults : plan/defaults/assigner_fa.yaml
 
 tasks :
   defaults : plan/defaults/tasks_fa.yaml

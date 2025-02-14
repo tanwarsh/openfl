@@ -180,6 +180,7 @@ class Aggregator:
         self.lock = Lock()
         self.use_delta_updates = use_delta_updates
 
+        # changes here
         self.model = None  # Initialize the model attribute to None
         if self.persistent_db and self._recover():
             logger.info("recovered state of aggregator")
@@ -195,6 +196,7 @@ class Aggregator:
                 tensor_pipe=self.compression_pipeline,
             )
         else:
+            print("inside else before load initial tensors")
             self.model: base_pb2.ModelProto = utils.load_proto(self.init_state_path)
             self._load_initial_tensors()  # keys are TensorKeys
 
@@ -295,9 +297,11 @@ class Aggregator:
         Returns:
             None
         """
-        tensor_dict, round_number = utils.deconstruct_model_proto(
-            self.model, compression_pipeline=self.compression_pipeline
-        )
+        # changes here from model to query tensor
+        # tensor_dict, round_number = utils.deconstruct_model_proto(
+        #     self.model, compression_pipeline=self.compression_pipeline
+        # )
+        tensor_dict, round_number = {}, 0
 
         # Check selected task_group before updating round number
         if self.assigner.is_task_group_evaluation():
@@ -312,7 +316,7 @@ class Aggregator:
         }
         # all initial model tensors are loaded here
         self.tensor_db.cache_tensor(tensor_key_dict)
-        logger.debug("This is the initial tensor_db: %s", self.tensor_db)
+        logger.info("This is the initial tensor_db: %s", self.tensor_db)
 
     def _load_initial_tensors_from_dict(self, tensor_dict):
         """Load all of the tensors required to begin federated learning.

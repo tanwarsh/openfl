@@ -320,22 +320,37 @@ class Collaborator:
             # Tasks are defined as methods of TaskRunner
             func = getattr(self.task_runner, func_name)
             logger.debug("Using TaskRunner subclassing API")
-
-        global_output_tensor_dict, local_output_tensor_dict = func(
+        print("input_tensor_dict", input_tensor_dict)
+        query_output_tensor_dict = func(
             col_name=self.collaborator_name,
             round_num=round_number,
             input_tensor_dict=input_tensor_dict,
             **kwargs,
         )
-
+        print("query_output_tensor_dict", query_output_tensor_dict)
         # Save global and local output_tensor_dicts to TensorDB
-        self.tensor_db.cache_tensor(global_output_tensor_dict)
-        self.tensor_db.cache_tensor(local_output_tensor_dict)
+        self.tensor_db.cache_tensor(query_output_tensor_dict)
 
         # send the results for this tasks; delta and compression will occur in
         # this function
-        metrics = self.send_task_results(global_output_tensor_dict, round_number, task_name)
+        metrics = self.send_task_results(query_output_tensor_dict, round_number, task_name)
         return metrics
+
+        # global_output_tensor_dict, local_output_tensor_dict = func(
+        #     col_name=self.collaborator_name,
+        #     round_num=round_number,
+        #     input_tensor_dict=input_tensor_dict,
+        #     **kwargs,
+        # )
+
+        # # Save global and local output_tensor_dicts to TensorDB
+        # self.tensor_db.cache_tensor(global_output_tensor_dict)
+        # self.tensor_db.cache_tensor(local_output_tensor_dict)
+
+        # # send the results for this tasks; delta and compression will occur in
+        # # this function
+        # metrics = self.send_task_results(global_output_tensor_dict, round_number, task_name)
+        # return metrics
 
     def get_numpy_dict_for_tensorkeys(self, tensor_keys):
         """Get tensor dictionary for specified tensorkey set.
@@ -503,8 +518,12 @@ class Collaborator:
 
         if "valid" in task_name:
             data_size = self.task_runner.get_valid_data_size()
+        print("task_name", task_name)
+        if "query" in task_name:
+            data_size = self.task_runner.get_query_data_size()
+        
 
-        logger.debug("%s data size = %s", task_name, data_size)
+        logger.info("%s data size = %s", task_name, data_size)
 
         metrics = {}
         for tensor in tensor_dict:
