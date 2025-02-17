@@ -11,3 +11,7 @@ settings :
       percentage : 0
       tasks      :
         - aggregated_model_validation
+    - name       : analyis
+      percentage : 0
+      tasks      :
+        - query

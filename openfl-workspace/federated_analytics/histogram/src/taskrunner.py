@@ -31,10 +31,10 @@ class IrisHistogram(FederatedAnalyticsTaskRunner):
         _, vals = np.histogram(df[col_name])
         return vals
 
-    def aggregate_query(self, **kwargs):
-        print("aggregate_query called")
-        for key, value in kwargs.items():
-            print(f"{key}: {value}")
+    # def aggregate_query(self, **kwargs):
+    #     print("aggregate_query called")
+    #     for key, value in kwargs.items():
+    #         print(f"{key}: {value}")
 
     def save_native(self):
         """Save aggegated query result."""

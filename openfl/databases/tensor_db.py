@@ -214,12 +214,14 @@ class TensorDB:
                 returns None.
             None: if not all values are present.
         """
+        print("inside get_aggregated_tensor")
         if len(collaborator_weight_dict) != 0:
             assert np.abs(1.0 - sum(collaborator_weight_dict.values())) < 0.01, (
                 f"Collaborator weights do not sum to 1.0: {collaborator_weight_dict}"
             )
 
         collaborator_names = collaborator_weight_dict.keys()
+        print(f"collaborator_names: {collaborator_names}")
         agg_tensor_dict = {}
 
         # Check if the aggregated tensor is already present in TensorDB
@@ -232,6 +234,7 @@ class TensorDB:
             & (self.tensor_db["report"] == report)
             & (self.tensor_db["tags"] == tags)
         ]["nparray"]
+        print("raw_df",raw_df)
         if len(raw_df) > 0:
             return np.array(raw_df.iloc[0]), {}
 
@@ -259,6 +262,8 @@ class TensorDB:
             )
             for col_name in collaborator_names
         ]
+        for lt in local_tensors:
+            print(f"LocalTensor: {lt}")
 
         if hasattr(aggregation_function, "_privileged"):
             if aggregation_function._privileged:

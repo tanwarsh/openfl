@@ -1,11 +1,11 @@
 template : openfl.component.RandomGroupedAssigner
 settings :
   task_groups  :
-    - name       : query
-      percentage : 1.0
-      tasks      :
-        - query
-    - name       : aggregate_query
-      percentage : 0
-      tasks      :
-        - aggregate_query
+    # - name       : query
+    #   percentage : 1
+    #   tasks      :
+    #     - query
+    # - name       : aggregate_query
+    #   percentage : 0.5
+    #   tasks      :
+    #     - aggregate_query

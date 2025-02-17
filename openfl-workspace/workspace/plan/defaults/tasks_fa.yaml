@@ -1,9 +1,12 @@
 query:
   function : query
+  aggregation_type: 
+    template: src.median.Median
+    
   kwargs   :
     columns: ['sepal length (cm)', 'sepal width (cm)']
 
-aggregate_query:
-  function : aggregate_query
-  kwargs   :
-    columns: ['sepal length (cm)', 'sepal width (cm)']
+# aggregate_query:
+#   function : aggregate_query
+#   kwargs   :
+#     columns: ['sepal length (cm)', 'sepal width (cm)']

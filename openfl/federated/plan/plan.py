@@ -333,17 +333,23 @@ class Plan:
 
     def get_tasks(self):
         """Get federation tasks."""
+        print("inside get_tasks")
         tasks = self.config.get("tasks", {})
         tasks.pop(DEFAULTS, None)
         tasks.pop(SETTINGS, None)
         for task in tasks:
+            print("task", task)
             aggregation_type = tasks[task].get("aggregation_type")
+            print("aggregation_type", aggregation_type)
             if aggregation_type is None:
                 aggregation_type = WeightedAverage()
             elif isinstance(aggregation_type, dict):
+                print("inside dict")
                 if SETTINGS not in aggregation_type:
                     aggregation_type[SETTINGS] = {}
+                    print("not settings")
                 aggregation_type = Plan.build(**aggregation_type)
+                print("built")
                 if not isinstance(aggregation_type, AggregationFunction):
                     raise NotImplementedError(
                         f"""{task} task aggregation type does not implement an interface:
@@ -351,6 +357,7 @@ class Plan:
     """
                     )
             tasks[task]["aggregation_type"] = aggregation_type
+            print("type(aggregation_type)", type(aggregation_type))
         return tasks
 
     def get_aggregator(self, tensor_dict=None):

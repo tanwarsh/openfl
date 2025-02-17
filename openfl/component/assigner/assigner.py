@@ -114,6 +114,10 @@ class Assigner:
         Returns:
             str: Aggregation type for the task.
         """
+        # this one -- shailesh
+        print("inside get_aggregation_type_for_task")
+        print("task_name", task_name)
+        print("self.tasks", self.tasks)
         if "aggregation_type" not in self.tasks[task_name]:
             return None
         return self.tasks[task_name]["aggregation_type"]

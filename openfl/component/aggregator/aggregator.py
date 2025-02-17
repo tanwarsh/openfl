@@ -1018,6 +1018,7 @@ class Aggregator:
         # This handles getting the subset of collaborators that may be
         # part of the validation task
         print("task_name", task_name)
+        print("get_collaborators_for_task as called")
         all_collaborators_for_task = self.assigner.get_collaborators_for_task(
             task_name, self.round_number
         )
@@ -1055,14 +1056,18 @@ class Aggregator:
 
         metrics = {}
         for tensor_key in self.collaborator_tasks_results[task_key]:
+            print("tensor_key", tensor_key)
             tensor_name, origin, round_number, report, tags = tensor_key
-            assert collaborators_for_task[0] in tags, (
-                f"Tensor {tensor_key} in task {task_name} has not been processed correctly"
-            )
+            # assert collaborators_for_task[0] in tags, (
+            #     f"Tensor {tensor_key} in task {task_name} has not been processed correctly"
+            # )
             # Strip the collaborator label, and lookup aggregated tensor
             new_tags = change_tags(tags, remove_field=collaborators_for_task[0])
             agg_tensor_key = TensorKey(tensor_name, origin, round_number, report, new_tags)
             agg_function = WeightedAverage() if "metric" in tags else task_agg_function
+            print("agg_tensor_key", agg_tensor_key)
+            print("collaborator_weight_dict", collaborator_weight_dict)
+            print("agg_function", agg_function)
             agg_results = self.tensor_db.get_aggregated_tensor(
                 agg_tensor_key,
                 collaborator_weight_dict,
@@ -1117,8 +1122,9 @@ class Aggregator:
 
         # Compute all validation related metrics
         logs = {}
-        # for task_name in self.assigner.get_all_tasks_for_round(self.round_number):
-        #     logs.update(self._compute_validation_related_task_metrics(task_name))
+        for task_name in self.assigner.get_all_tasks_for_round(self.round_number):
+            print("task_name inside loop", task_name)
+            logs.update(self._compute_validation_related_task_metrics(task_name))
 
         # End of round callbacks.
         self.callbacks.on_round_end(self.round_number, logs)

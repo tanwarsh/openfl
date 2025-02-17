@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant agg as Aggregator
+    participant collab as Collaborator
+    participant TaskRunner
+    participant tdb as CollaboratorTensorDB
+
+    collab->>TaskRunner: do_task('secagg_decipher')
+    collab->>TaskRunner: get_required_tensorkeys_for_function(secagg_decipher)
+    TaskRunner-->>collab: 'collaborators_signed_participant_list'
+    collab->>agg: get_aggregated_tensor_from_aggregator('collaborators_signed_participant_list')
+    loop per collaborator
+        Note over TaskRunner: verify_participant_list(signed_participant_list_v)<br/>decipher(ciphertext_vu)
+    end
+    collab->>tdb: cache_tensor(ciphertexts_shares)
+    collab->>agg: send_task_results(ciphertexts_shares)
+
+    Note over agg: Using SecureAggregationFunction(AggregationFunction),<br/>reconstruct the secrets and calculate the aggregate.
