@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 class Aggregator:
-    """An Aggregator is the central node in federated learning.
+    """An Aggregator is the central node in federated learning and analysis.
 
     Attributes:
         round_number (int): Current round number.
@@ -71,6 +71,7 @@ class Aggregator:
         init_state_path,
         best_state_path,
         last_state_path,
+        save_path,
         assigner,
         use_delta_updates=True,
         straggler_handling_policy: StragglerPolicy = CutoffTimePolicy,
@@ -130,6 +131,10 @@ class Aggregator:
         if self.assigner.is_task_group_evaluation():
             self.rounds_to_train = 1
             logger.info(f"For evaluation tasks setting rounds_to_train = {self.rounds_to_train}")
+        
+        if self.assigner.is_task_group_analysis():
+            self.rounds_to_train = 1
+            logger.info(f"For Federated tasks setting rounds_to_train = {self.rounds_to_train}")
 
         self._end_of_round_check_done = [False] * rounds_to_train
         self.stragglers = []
@@ -156,31 +161,45 @@ class Aggregator:
         # if it is set to 1 for the aggregator.
         self.db_store_rounds = db_store_rounds
 
-        self.best_model_score = None
+        if not self.assigner.is_task_group_analysis():
+
+            self.best_model_score = None
+        # what is this?
         self.metric_queue = queue.Queue()
 
-        self.compression_pipeline = compression_pipeline or NoCompressionPipeline()
-        self.tensor_codec = TensorCodec(self.compression_pipeline)
+            self.compression_pipeline = compression_pipeline or NoCompressionPipeline()
+            self.tensor_codec = TensorCodec(self.compression_pipeline)
 
-        self.init_state_path = init_state_path
-        self.best_state_path = best_state_path
-        self.last_state_path = last_state_path
+            self.init_state_path = init_state_path
+            self.best_state_path = best_state_path
+            self.last_state_path = last_state_path
 
-        # TODO: Remove. Used in deprecated interactive and native APIs
-        self.best_tensor_dict: dict = {}
-        self.last_tensor_dict: dict = {}
-        # these enable getting all tensors for a task
-        self.collaborator_tasks_results = {}  # {TaskResultKey: list of TensorKeys}
-        self.collaborator_task_weight = {}  # {TaskResultKey: data_size}
+            # TODO: Remove. Used in deprecated interactive and native APIs
+            self.best_tensor_dict: dict = {}
+            self.last_tensor_dict: dict = {}
+            # these enable getting all tensors for a task
+            self.collaborator_tasks_results = {}  # {TaskResultKey: list of TensorKeys}
+            self.collaborator_task_weight = {}  # {TaskResultKey: data_size}
 
+            self.model = None  # Initialize the model attribute to None
+
+            if initial_tensor_dict:
+                self._load_initial_tensors_from_dict(initial_tensor_dict)
+                self.model = utils.construct_model_proto(
+                    tensor_dict=initial_tensor_dict,
+                    round_number=0,
+                    tensor_pipe=self.compression_pipeline,
+                )
+            else:
+                self.model: base_pb2.ModelProto = utils.load_proto(self.init_state_path)
+                self._load_initial_tensors()  # keys are TensorKeys
+            self.use_delta_updates = use_delta_updates
+        
         # maintain a list of collaborators that have completed task and
         # reported results in a given round
         self.collaborators_done = []
         # Initialize a lock for thread safety
         self.lock = Lock()
-        self.use_delta_updates = use_delta_updates
-
-        self.model = None  # Initialize the model attribute to None
 
         # Callbacks
         self.callbacks = callbacks_module.CallbackList(
@@ -190,18 +209,8 @@ class Aggregator:
             origin="aggregator",
         )
 
+        # not used any where
         self.collaborator_tensor_results = {}  # {TensorKey: nparray}}
-
-        if initial_tensor_dict:
-            self._load_initial_tensors_from_dict(initial_tensor_dict)
-            self.model = utils.construct_model_proto(
-                tensor_dict=initial_tensor_dict,
-                round_number=0,
-                tensor_pipe=self.compression_pipeline,
-            )
-        else:
-            self.model: base_pb2.ModelProto = utils.load_proto(self.init_state_path)
-            self._load_initial_tensors()  # keys are TensorKeys
 
         if self.persistent_db and self._recover():
             logger.info("Recovered state of aggregator")
@@ -212,6 +221,7 @@ class Aggregator:
         self.callbacks.on_round_begin(self.round_number)
 
     def _recover(self):
+        # this is left
         """Populates the aggregator state to the state it was prior a restart"""
         recovered = False
         # load tensors persistent DB
@@ -293,6 +303,7 @@ class Aggregator:
         Returns:
             None
         """
+        # model only
         tensor_dict, round_number = utils.deconstruct_model_proto(
             self.model, compression_pipeline=self.compression_pipeline
         )
@@ -321,6 +332,7 @@ class Aggregator:
         Returns:
             None
         """
+        # model only
         tensor_key_dict = {
             TensorKey(k, self.uuid, self.round_number, False, ("model",)): v
             for k, v in tensor_dict.items()
@@ -1115,7 +1127,10 @@ class Aggregator:
 
         # Save the latest model
         logger.info("Saving round %s model...", self.round_number)
-        self._save_model(self.round_number, self.last_state_path)
+        if self.assigner.is_task_group_analysis():
+            self.save_analysis()
+        else:
+            self._save_model(self.round_number, self.last_state_path)
 
         self.round_number += 1
         # resetting stragglers for task for a new round

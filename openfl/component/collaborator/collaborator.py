@@ -131,6 +131,8 @@ class Collaborator:
 
         self.task_config = task_config
 
+        print("task_config", task_config)
+
         # RESET/CONTINUE_LOCAL/CONTINUE_GLOBAL
         if hasattr(OptTreatment, opt_treatment):
             self.opt_treatment = OptTreatment[opt_treatment]
@@ -321,7 +323,7 @@ class Collaborator:
             func = getattr(self.task_runner, func_name)
             logger.debug("Using TaskRunner subclassing API")
 
-        global_output_tensor_dict, local_output_tensor_dict = func(
+        query_output_tensor_dict = func(
             col_name=self.collaborator_name,
             round_num=round_number,
             input_tensor_dict=input_tensor_dict,
@@ -329,12 +331,11 @@ class Collaborator:
         )
 
         # Save global and local output_tensor_dicts to TensorDB
-        self.tensor_db.cache_tensor(global_output_tensor_dict)
-        self.tensor_db.cache_tensor(local_output_tensor_dict)
+        self.tensor_db.cache_tensor(query_output_tensor_dict)
 
         # send the results for this tasks; delta and compression will occur in
         # this function
-        metrics = self.send_task_results(global_output_tensor_dict, round_number, task_name)
+        metrics = self.send_task_results(query_output_tensor_dict, round_number, task_name)
         return metrics
 
     def get_numpy_dict_for_tensorkeys(self, tensor_keys):
