@@ -279,6 +279,35 @@ class TensorDB:
 
         return np.array(agg_nparray)
 
+    
+    def get_analysis_aggregated_tensor(
+        self,
+        tensor_keys,
+        aggregation_function: AggregationFunction,
+    ) -> Optional[np.ndarray]:
+        # collaborator_names = collaborator_weight_dict.keys()
+        # agg_tensor_dict = {}
+        local_tensors = {}
+        for tensor_key in tensor_keys:
+            # Check if the aggregated tensor is already present in TensorDB
+            tensor_name, origin, fl_round, report, tags = tensor_key
+
+            local_tensors[tensor_key] = self.tensor_db[
+                (self.tensor_db["tensor_name"] == tensor_name)
+                & (self.tensor_db["origin"] == origin)
+                & (self.tensor_db["round"] == fl_round)
+                & (self.tensor_db["report"] == report)
+                & (self.tensor_db["tags"] == tags)
+            ]["nparray"]
+        db_iterator = self._iterate()
+        agg_nparrays = aggregation_function(local_tensors, db_iterator, tensor_name, fl_round, tags)
+        for agg_nparray in agg_nparrays:
+            self.cache_tensor(agg_nparray)
+
+        # return np.array(agg_nparray)
+        return agg_nparrays
+
+    
     def _iterate(self, order_by: str = "round", ascending: bool = False) -> Iterator[pd.Series]:
         """Returns an iterator over the rows of the TensorDB, sorted by a
         specified column.

@@ -68,11 +68,11 @@ class Aggregator:
         aggregator_uuid,
         federation_uuid,
         authorized_cols,
-        init_state_path,
-        best_state_path,
-        last_state_path,
-        save_path,
         assigner,
+        save_path=None,
+        init_state_path=None,
+        best_state_path=None,
+        last_state_path=None,
         use_delta_updates=True,
         straggler_handling_policy: StragglerPolicy = CutoffTimePolicy,
         rounds_to_train=256,
@@ -160,15 +160,15 @@ class Aggregator:
         # FIXME: I think next line generates an error on the second round
         # if it is set to 1 for the aggregator.
         self.db_store_rounds = db_store_rounds
-
+        # what is this?
+        self.metric_queue = queue.Queue()
+        self.collaborator_tasks_results = {}  # {TaskResultKey: list of TensorKeys}
+        self.collaborator_task_weight = {}  # {TaskResultKey: data_size}
+        self.compression_pipeline = compression_pipeline or NoCompressionPipeline()
+        self.tensor_codec = TensorCodec(self.compression_pipeline)
         if not self.assigner.is_task_group_analysis():
 
             self.best_model_score = None
-        # what is this?
-        self.metric_queue = queue.Queue()
-
-            self.compression_pipeline = compression_pipeline or NoCompressionPipeline()
-            self.tensor_codec = TensorCodec(self.compression_pipeline)
 
             self.init_state_path = init_state_path
             self.best_state_path = best_state_path
@@ -178,8 +178,7 @@ class Aggregator:
             self.best_tensor_dict: dict = {}
             self.last_tensor_dict: dict = {}
             # these enable getting all tensors for a task
-            self.collaborator_tasks_results = {}  # {TaskResultKey: list of TensorKeys}
-            self.collaborator_task_weight = {}  # {TaskResultKey: data_size}
+            
 
             self.model = None  # Initialize the model attribute to None
 
@@ -194,7 +193,8 @@ class Aggregator:
                 self.model: base_pb2.ModelProto = utils.load_proto(self.init_state_path)
                 self._load_initial_tensors()  # keys are TensorKeys
             self.use_delta_updates = use_delta_updates
-        
+        else:
+            self.save_path = save_path
         # maintain a list of collaborators that have completed task and
         # reported results in a given round
         self.collaborators_done = []
@@ -394,6 +394,10 @@ class Aggregator:
             tensor_dict, round_number, self.compression_pipeline
         )
         utils.dump_proto(self.model, file_path)
+    
+    def _save_analysis(self, round_number):
+        tensors = self.tensor_db.get_tensors_by_round_and_tags(round_number, ("aggregated",))
+        utils.save_analysis_result(tensors, self.save_path)
 
     def valid_collaborator_cn_and_id(self, cert_common_name, collaborator_common_name):
         """
@@ -805,7 +809,6 @@ class Aggregator:
                 self.metric_queue.put(metrics)
 
             task_results.append(tensor_key)
-
         self.collaborator_tasks_results[task_key] = task_results
 
         with self.lock:
@@ -1098,6 +1101,34 @@ class Aggregator:
 
         return metrics
 
+    def _aggregate_analysis_result(self, task_name) -> dict:
+        # # By default, print out all of the metrics that the validation
+        # # task sent
+        # # This handles getting the subset of collaborators that may be
+        # # part of the validation task
+        # all_collaborators_for_task = self.assigner.get_collaborators_for_task(
+        #     task_name, self.round_number
+        # )
+        # # Leave out straggler for the round even if they've paritally
+        # # completed given tasks
+        # collaborators_for_task = []
+        # collaborators_for_task = [
+        #     c for c in all_collaborators_for_task if c in self.collaborators_done
+        # ]
+
+        task_agg_function = self.assigner.get_aggregation_type_for_task(task_name)
+        self.analysis_agg_results = {}
+        tensor_keys = []
+        for TaskResultKey, colaborator_tensor_keys in self.collaborator_tasks_results.items():
+            for tensor_key in colaborator_tensor_keys:
+                tensor_keys.append(tensor_key)
+        self.analysis_agg_results = self.tensor_db.get_analysis_aggregated_tensor(
+            tensor_keys,
+            aggregation_function=task_agg_function,
+        )
+
+        return self.analysis_agg_results
+
     def _end_of_round_check(self):
         """Check if the round complete.
 
@@ -1116,8 +1147,12 @@ class Aggregator:
 
         # Compute all validation related metrics
         logs = {}
-        for task_name in self.assigner.get_all_tasks_for_round(self.round_number):
-            logs.update(self._compute_validation_related_task_metrics(task_name))
+        if self.assigner.is_task_group_analysis():
+            for task_name in self.assigner.get_all_tasks_for_round(self.round_number):
+                logs.update(self._aggregate_analysis_result(task_name))
+        else:
+            for task_name in self.assigner.get_all_tasks_for_round(self.round_number):
+                logs.update(self._compute_validation_related_task_metrics(task_name))
 
         # End of round callbacks.
         self.callbacks.on_round_end(self.round_number, logs)
@@ -1128,7 +1163,7 @@ class Aggregator:
         # Save the latest model
         logger.info("Saving round %s model...", self.round_number)
         if self.assigner.is_task_group_analysis():
-            self.save_analysis()
+            self._save_analysis(self.round_number)
         else:
             self._save_model(self.round_number, self.last_state_path)
 

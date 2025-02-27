@@ -306,6 +306,7 @@ class Plan:
         self.aggregator_uuid = f"aggregator_{self.federation_uuid}"
 
         self.rounds_to_train = self.config["aggregator"][SETTINGS]["rounds_to_train"]
+        # self.rounds_to_train = self.config["aggregator"][SETTINGS].get("rounds_to_train")
 
         if self.config["network"][SETTINGS]["agg_addr"] == AUTO:
             self.config["network"][SETTINGS]["agg_addr"] = getfqdn_env()
@@ -458,7 +459,8 @@ class Plan:
             self.runner_ = Plan.build(**defaults)
 
         # Define task dependencies after taskrunner has been initialized
-        self.runner_.initialize_tensorkeys_for_functions()
+        #shailesh add condition ? 
+        # self.runner_.initialize_tensorkeys_for_functions()
 
         return self.runner_
 

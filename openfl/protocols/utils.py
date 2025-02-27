@@ -5,6 +5,7 @@
 
 from openfl.protocols import base_pb2
 from openfl.utilities import TensorKey
+import csv
 
 
 def model_proto_to_bytes_and_metadata(model_proto):
@@ -291,6 +292,12 @@ def dump_proto(model_proto, fpath):
     s = model_proto.SerializeToString()
     with open(fpath, "wb") as f:
         f.write(s)
+
+def save_analysis_result(result, fpath):
+    with open(fpath, "w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        for key, values in result.items():
+            writer.writerow([key] + values)
 
 
 def datastream_to_proto(proto, stream, logger=None):

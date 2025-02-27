@@ -21,7 +21,8 @@ if util.find_spec("torch") is not None:
 if util.find_spec("xgboost") is not None:
     from openfl.federated.data import XGBoostDataLoader
     from openfl.federated.task import XGBoostTaskRunner
-
+from openfl.federated.data import FederatedAnalyticsDataLoader
+from openfl.federated.task import FederatedAnalyticsTaskRunner
 __all__ = [
     "Plan",
     "TaskRunner",

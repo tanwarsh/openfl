@@ -86,6 +86,7 @@ class Collaborator:
         log_memory_usage=False,
         write_logs=False,
         callbacks: Optional[List] = None,
+        type=None,
     ):
         """Initialize the Collaborator object.
 
@@ -130,25 +131,25 @@ class Collaborator:
         self.client = client
 
         self.task_config = task_config
+        self.type = type
 
-        print("task_config", task_config)
+        if self.type != "analysis":
+            # RESET/CONTINUE_LOCAL/CONTINUE_GLOBAL
+            if hasattr(OptTreatment, opt_treatment):
+                self.opt_treatment = OptTreatment[opt_treatment]
+            else:
+                logger.error("Unknown opt_treatment: %s.", opt_treatment.name)
+                raise NotImplementedError(f"Unknown opt_treatment: {opt_treatment}.")
 
-        # RESET/CONTINUE_LOCAL/CONTINUE_GLOBAL
-        if hasattr(OptTreatment, opt_treatment):
-            self.opt_treatment = OptTreatment[opt_treatment]
-        else:
-            logger.error("Unknown opt_treatment: %s.", opt_treatment.name)
-            raise NotImplementedError(f"Unknown opt_treatment: {opt_treatment}.")
+            if hasattr(DevicePolicy, device_assignment_policy):
+                self.device_assignment_policy = DevicePolicy[device_assignment_policy]
+            else:
+                logger.error(f"Unknown device_assignment_policy: {device_assignment_policy.name}.")
+                raise NotImplementedError(
+                    f"Unknown device_assignment_policy: {device_assignment_policy}."
+                )
 
-        if hasattr(DevicePolicy, device_assignment_policy):
-            self.device_assignment_policy = DevicePolicy[device_assignment_policy]
-        else:
-            logger.error(f"Unknown device_assignment_policy: {device_assignment_policy.name}.")
-            raise NotImplementedError(
-                f"Unknown device_assignment_policy: {device_assignment_policy}."
-            )
-
-        self.task_runner.set_optimizer_treatment(self.opt_treatment.name)
+            self.task_runner.set_optimizer_treatment(self.opt_treatment.name)
 
         # Callbacks
         self.callbacks = callbacks_module.CallbackList(
@@ -266,44 +267,38 @@ class Collaborator:
                 task_name = task.name
             func_name = self.task_config[task_name]["function"]
             kwargs = self.task_config[task_name]["kwargs"]
-
-        # this would return a list of what tensors we require as TensorKeys
-        required_tensorkeys_relative = self.task_runner.get_required_tensorkeys_for_function(
-            func_name, **kwargs
-        )
-
-        # models actually return "relative" tensorkeys of (name, LOCAL|GLOBAL,
-        # round_offset)
-        # so we need to update these keys to their "absolute values"
-        required_tensorkeys = []
-        for (
-            tname,
-            origin,
-            rnd_num,
-            report,
-            tags,
-        ) in required_tensorkeys_relative:
-            if origin == "GLOBAL":
-                origin = self.aggregator_uuid
-            else:
-                origin = self.collaborator_name
-
-            # rnd_num is the relative round. So if rnd_num is -1, get the
-            # tensor from the previous round
-            required_tensorkeys.append(
-                TensorKey(tname, origin, rnd_num + round_number, report, tags)
+        input_tensor_dict = []
+        if self.type != "analysis":
+            # this would return a list of what tensors we require as TensorKeys
+            required_tensorkeys_relative = self.task_runner.get_required_tensorkeys_for_function(
+                func_name, **kwargs
             )
 
-        # print('Required tensorkeys = {}'.format(
-        # [tk[0] for tk in required_tensorkeys]))
-        input_tensor_dict = self.get_numpy_dict_for_tensorkeys(required_tensorkeys)
+            # models actually return "relative" tensorkeys of (name, LOCAL|GLOBAL,
+            # round_offset)
+            # so we need to update these keys to their "absolute values"
+            required_tensorkeys = []
+            for (
+                tname,
+                origin,
+                rnd_num,
+                report,
+                tags,
+            ) in required_tensorkeys_relative:
+                if origin == "GLOBAL":
+                    origin = self.aggregator_uuid
+                else:
+                    origin = self.collaborator_name
 
-        # now we have whatever the model needs to do the task
-        if hasattr(self.task_runner, "TASK_REGISTRY"):
-            # New interactive python API
-            # New `Core` TaskRunner contains registry of tasks
-            func = self.task_runner.TASK_REGISTRY[func_name]
-            logger.debug("Using Interactive Python API")
+                # rnd_num is the relative round. So if rnd_num is -1, get the
+                # tensor from the previous round
+                required_tensorkeys.append(
+                    TensorKey(tname, origin, rnd_num + round_number, report, tags)
+                )
+
+            # print('Required tensorkeys = {}'.format(
+            # [tk[0] for tk in required_tensorkeys]))
+            input_tensor_dict = self.get_numpy_dict_for_tensorkeys(required_tensorkeys)
 
             # So far 'kwargs' contained parameters read from the plan
             # those are parameters that the eperiment owner registered for
@@ -317,6 +312,13 @@ class Collaborator:
                 kwargs["device"] = f"cuda:{self.cuda_devices[0]}"
             else:
                 kwargs["device"] = "cpu"
+    
+        # now we have whatever the model needs to do the task
+        if hasattr(self.task_runner, "TASK_REGISTRY"):
+            # New interactive python API
+            # New `Core` TaskRunner contains registry of tasks
+            func = self.task_runner.TASK_REGISTRY[func_name]
+            logger.debug("Using Interactive Python API")
         else:
             # TaskRunner subclassing API
             # Tasks are defined as methods of TaskRunner
@@ -568,7 +570,14 @@ class Collaborator:
                     lossless=False,
                 )
                 return named_tensor
-
+        # check
+        if "query" in tags:
+            nparray = self.tensor_db.get_tensor_from_cache(
+                TensorKey(tensor_name, origin, round_number, report, ("model",))
+            )
+            named_tensor = utils.construct_named_tensor(
+                tensor_key, nparray, [], lossless=True
+            )
         # Assume every other tensor requires lossless compression
         compressed_tensor_key, compressed_nparray, metadata = self.tensor_codec.compress(
             tensor_key, nparray, require_lossless=True
