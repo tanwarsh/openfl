@@ -77,6 +77,7 @@ class Collaborator:
         callbacks: Optional[List] = [],
         secure_aggregation=False,
         interop_mode=False,
+        query=None,  # <-- Add query argument
     ):
         """Initialize the Collaborator object.
 
@@ -164,6 +165,8 @@ class Collaborator:
             client=self.client,
         )
 
+        self.query = query  # Store the query
+
     def ping(self):
         """Ping the Aggregator."""
         self.client.ping()
@@ -218,6 +221,10 @@ class Collaborator:
             task_name = task.name
         func_name = self.task_config[task_name]["function"]
         kwargs = self.task_config[task_name]["kwargs"]
+
+        # Inject query into kwargs if provided
+        if self.query is not None:
+            kwargs["query"] = self.query
 
         # this would return a list of what tensors we require as TensorKeys
         required_tensorkeys_relative = self.task_runner.get_required_tensorkeys_for_function(

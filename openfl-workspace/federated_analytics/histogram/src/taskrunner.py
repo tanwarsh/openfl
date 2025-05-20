@@ -24,17 +24,18 @@ class IrisHistogram(FederatedAnalyticsTaskRunner):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def analytics_task(self, columns, **kwargs):
+    def analytics_task(self, columns=None, query=None, **kwargs):
         """
-        Perform analytics on the specified columns and compute histograms.
+        Perform analytics on the specified columns or using a custom query.
         Args:
-            columns (list): List of column names to analyze.
+            columns (list, optional): List of column names to analyze.
+            query (str, optional): Custom SQL query string.
             **kwargs: Additional keyword arguments.
         Returns:
             dict: A dictionary where keys are column names and values are histograms.
         """
         # query data
-        data = self.data_loader.query(columns)
+        data = self.data_loader.query(columns=columns, query=query)
         histograms = {}
         for column in columns:
             hist, bins = self.compute_hist(data, column)

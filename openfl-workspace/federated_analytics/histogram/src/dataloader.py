@@ -65,20 +65,30 @@ class IRISInMemory(DataLoader):
 
         return self._load_data().iloc[shard_num-1::collaborator_count]
 
-    def query(self, columns, **kwargs):
+    def query(self, columns=None, query=None, **kwargs):
         """
-        Query the data shard for the specified columns.
+        Query the data shard for the specified columns or execute a custom SQL query.
         Args:
-            columns (list): A list of column names to query from the data shard.
-        **kwargs: Additional keyword arguments (currently not used).
+            columns (list, optional): A list of column names to query from the data shard.
+            query (str, optional): A custom SQL query string.
+            **kwargs: Additional keyword arguments (currently not used).
         Returns:
-            DataFrame: A DataFrame containing the data for the specified columns.
+            DataFrame: A DataFrame containing the data for the specified columns or query.
         Raises:
-            ValueError: If the columns parameter is not a list.
+            ValueError: If the columns parameter is not a list when provided.
         """
-        if not isinstance(columns, list):
-            raise ValueError("Columns parameter must be a list")
-        return self.data_shard[columns]
+        if query is not None:
+            try:
+                import pandasql
+                pysqldf = lambda q: pandasql.sqldf(q, {"df": self.data_shard})
+                return pysqldf(query)
+            except ImportError:
+                raise ImportError("pandasql is required for SQL queries. Please install it via pip.")
+        if columns is not None:
+            if not isinstance(columns, list):
+                raise ValueError("Columns parameter must be a list")
+            return self.data_shard[columns]
+        return self.data_shard
 
     def get_feature_shape(self):
         """

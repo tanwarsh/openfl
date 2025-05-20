@@ -1,0 +1,15 @@
+{
+  "type": "mysql",
+  "host": "localhost",
+  "port": 3306,
+  "user": "username",
+  "password": "password",
+  "database": "health_db",
+  "query": "SELECT age, sex, heart_rate FROM patients WHERE age > 30"
+}
+
+{
+  "type": "csv",
+  "file_path": "./data/patients.csv",
+  "columns": ["Age", "SEX", "Heart_Rate"],
+}

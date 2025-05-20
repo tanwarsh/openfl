@@ -62,7 +62,13 @@ def collaborator(context):
     required=True,
     help="The certified common name of the collaborator.",
 )
-def start_(plan, collaborator_name, data_config):
+@option(
+    "--query",
+    required=False,
+    help="Custom SQL query to use for data loading.",
+    default=None,
+)
+def start_(plan, collaborator_name, data_config, query):
     """Starts a collaborator service."""
     if plan and is_directory_traversal(plan):
         echo("Federated learning plan path is out of the openfl workspace scope.")
@@ -81,7 +87,7 @@ def start_(plan, collaborator_name, data_config):
     echo(f"Data = {plan_obj.cols_data_paths}")
     logger.info("🧿 Starting a Collaborator Service.")
 
-    collaborator = plan_obj.get_collaborator(collaborator_name)
+    collaborator = plan_obj.get_collaborator(collaborator_name, query=query)
     collaborator.run()
 
 
